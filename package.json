@@ -1,0 +1,12 @@
+{
+  "name": "suhaiku",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs && vercel dev"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest"
+  }
+}
