@@ -94,6 +94,13 @@
     },
   };
 
+  let mode;
+  window.suhaikuMode = () =>
+    (mode ??= fetch("/api/claude", { method: "GET" })
+      .then((r) => (r.ok ? r.json() : { mode: "showcase" }))
+      .then((j) => (j.mode === "live" ? "live" : "showcase"))
+      .catch(() => "showcase"));
+
   window.claude = { use: async (name) => (name === "sample" ? sample : name === "downloads" ? downloads : null) };
 })();
 </script>
@@ -200,6 +207,9 @@ button{font:inherit;color:inherit}
 .vbox canvas{width:auto;max-width:100%;height:min(62vh,640px);margin:0 auto;aspect-ratio:9/16;display:block;background:#1b1a20}
 .vrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .vstat{font-size:13px;color:var(--muted)}
+.shownote{border:1px solid var(--line-2);background:var(--surface);padding:16px 18px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.shownote p{margin:0;color:var(--muted);max-width:52ch}
+.shownote a{text-decoration:none}
 .swatch.art{background:linear-gradient(135deg,#3b2f63,#c07a95 55%,#f2b9a5)}
 .shelf article.arty{color:#fff;border:0;background-size:cover;background-position:center;text-shadow:0 1px 12px rgba(0,0,0,.45)}
 .shelf article.arty small span,.shelf article.arty small,.shelf article.arty button{color:rgba(255,255,255,.85)}
@@ -396,6 +406,11 @@ footer{margin-top:96px;padding-top:22px;border-top:1px solid var(--line);display
           <button class="primary" id="go" type="submit">Write</button>
         </form>
 
+        <div class="shownote" id="showNote" hidden>
+          <p>On this site you write the poem yourself. Suhaiku counts the syllables and sets it on a painting made just for it.</p>
+          <p>To have Claude write one for you, open the Claude version.</p>
+          <a class="tb strong" href="https://claude.ai/artifact/GaU6RRdyMVsPSkNWcgLSoP" target="_blank" rel="noopener">Open Suhaiku in Claude ↗</a>
+        </div>
         <div class="editor" id="editor" hidden>
           <div id="elines" class="editor"></div>
           <div class="row" style="margin-top:6px">
@@ -524,7 +539,8 @@ $("weatherBtn").onclick=()=>{weatherOn=!weatherOn;ls.set("su-weather",weatherOn)
 $("weatherBtn").setAttribute("aria-pressed",weatherOn);
 function setMode(m){mode=m;$("mClaude").setAttribute("aria-pressed",m==="claude");$("mMe").setAttribute("aria-pressed",m==="me");
   $("f").hidden=m==="me";$("countLbl").hidden=m==="me";$("counts").hidden=m==="me";$("editor").hidden=m!=="me";if(m==="me")buildEditor()}
-$("mClaude").onclick=()=>!busy&&setMode("claude");$("mMe").onclick=()=>!busy&&setMode("me");
+let SHOWCASE=false;
+$("mClaude").onclick=()=>{if(busy)return;if(SHOWCASE){$("mClaude").setAttribute("aria-pressed","true");$("mMe").setAttribute("aria-pressed","false");$("editor").hidden=true;$("showNote").hidden=false;return}setMode("claude")};$("mMe").onclick=()=>{if(busy)return;$("showNote").hidden=true;setMode("me")};
 $("toCollection").onclick=()=>{if(collection.length)$("collection").scrollIntoView({behavior:reduced?"auto":"smooth"});else{$("gallery").scrollIntoView({behavior:reduced?"auto":"smooth"});status("Your collection is empty. Press Keep on a poem you love.")}};
 $("toGallery").onclick=()=>$("gallery").scrollIntoView({behavior:reduced?"auto":"smooth"});
 $("startBtn").onclick=()=>{$("studio").scrollIntoView({behavior:reduced?"auto":"smooth"});setTimeout(()=>$("topic").focus({preventScroll:true}),reduced?0:600)};
@@ -769,7 +785,7 @@ function renderDrafts(drafts,streaming){
 let pendingDrafts=null,pendingPrev=null;
 $("poem").onclick=e=>{const d=e.target.closest(".draft");
   if(d&&!d.disabled&&pendingDrafts){const k=pendingDrafts[+d.dataset.d],prev=pendingPrev;pendingDrafts=null;commit(k,prev,true);return}
-  const b=e.target.closest(".ln");if(!b||b.disabled||busy||!current)return;const i=+b.dataset.i;selLine=selLine===i?null:i;renderPoem(current);syncTools()};
+  const b=e.target.closest(".ln");if(!b||b.disabled||busy||!current||SHOWCASE)return;const i=+b.dataset.i;selLine=selLine===i?null:i;renderPoem(current);syncTools()};
 function syncTools(){
   $("tools").hidden=!current;$("lineBar").hidden=!current||selLine==null;
   if(current){if(selLine!=null)$("lineLbl").textContent="Line "+(selLine+1);
@@ -885,8 +901,8 @@ Match the writer's voice.\n${CRAFT}\n${FORMAT(pat.length)}`);
     const p=parse(text,false);if(p.lines.length!==pat.length){status("That came back incomplete. Try again.","err");return}
     draftLines=draftLines.map((l,i)=>l.text.trim()?l:{text:p.lines[i].text,claude:true});editorTitle=p.title;buildEditor();status("Dashed lines are Claude's. Edit anything.","ok")}catch(e){fail(e,current)}};
 $("toCard").onclick=()=>{if(draftLines.some(l=>!l.text.trim())){status("Fill every line first, or let Claude fill the empty ones.","err");return}
-  commit({title:editorTitle||caught.join(" · ")||"untitled",topic:caught.join(" · ")||"my own words",mood,form,lines:draftLines.map(l=>({text:l.text.trim(),syllables:sylLine(l.text)}))},current,true);
-  draftLines=[];editorTitle="";buildEditor();status("Set on the card. Ask for Editor's notes.","ok");scrollToCard()};
+  commit({title:editorTitle||caught.join(" · ")||(t=>(t.length<=26?t:t.split(/\s+/).slice(0,3).join(" ")).replace(/[,.;:!?]+$/,""))(draftLines[0].text.trim()),topic:caught.join(" · ")||"my own words",mood,form,lines:draftLines.map(l=>({text:l.text.trim(),syllables:sylLine(l.text)})),photo:photo?.url||null},current,true);
+  draftLines=[];editorTitle="";buildEditor();status(SHOWCASE?"Set on the card. Save it as an image, or make a 5-second video.":"Set on the card. Ask for Editor's notes.","ok");scrollToCard()};
 
 /* ---------- listen / copy / collection / download ---------- */
 if("speechSynthesis" in window)$("listen").hidden=false;
@@ -1047,6 +1063,13 @@ function renderHero(){const img=$("heroImg"),r=img.parentElement.getBoundingClie
   if(img.src&&!reduced){img.style.opacity=0;setTimeout(go,500)}else go()}
 $("heroNew").onclick=renderHero;
 function navCount(){$("navCount").textContent=collection.length}
+/* Free showcase: on the standalone site with no API key, everything runs except Claude writing. */
+function enterShowcase(){SHOWCASE=true;document.documentElement.classList.add("showcase");setMode("me");
+  $("mMe").textContent="Write";$("mClaude").textContent="Claude writes ↗";
+  document.querySelector(".herotext p").textContent="Write a poem in seventeen syllables. Suhaiku counts every one and sets your words on a painting made just for them.";
+  ["finish","sensei"].forEach(id=>$(id).hidden=true);$("remix").closest(".tgroup").hidden=true;document.querySelector(".note-hand").hidden=true;
+  $("inspNote").dataset.show="1"}
+(window.suhaikuMode?window.suhaikuMode():Promise.resolve("live")).then(m=>{if(m==="showcase")enterShowcase()});
 renderHero();renderPrints();renderSpread();renderGallery();showExample();renderShelf();renderTokens();navCount();setWeather("motes");wSize();requestAnimationFrame(wFrame);
 </script>
 

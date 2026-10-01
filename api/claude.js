@@ -2,7 +2,7 @@
 // The browser never sees the API key; it lives in the ANTHROPIC_API_KEY env var on Vercel.
 import Anthropic from "@anthropic-ai/sdk";
 
-const client = new Anthropic();
+let client;
 
 // Guards for a public endpoint that spends your API credit.
 const MAX_PROMPT_CHARS = 6000;
@@ -26,7 +26,13 @@ function rateLimited(ip) {
 const json = (status, body) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
+export function GET() {
+  return json(200, { mode: process.env.ANTHROPIC_API_KEY ? "live" : "showcase" });
+}
+
 export async function POST(request) {
+  if (!process.env.ANTHROPIC_API_KEY) return json(503, { code: "showcase" });
+  client ??= new Anthropic();
   const allowed = process.env.ALLOWED_ORIGIN;
   const origin = request.headers.get("origin");
   if (allowed && origin && origin !== allowed) return json(403, { code: "forbidden" });

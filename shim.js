@@ -87,5 +87,12 @@
     },
   };
 
+  let mode;
+  window.suhaikuMode = () =>
+    (mode ??= fetch("/api/claude", { method: "GET" })
+      .then((r) => (r.ok ? r.json() : { mode: "showcase" }))
+      .then((j) => (j.mode === "live" ? "live" : "showcase"))
+      .catch(() => "showcase"));
+
   window.claude = { use: async (name) => (name === "sample" ? sample : name === "downloads" ? downloads : null) };
 })();
