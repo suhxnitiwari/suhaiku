@@ -1,7 +1,13 @@
 # Suhaiku
 
-Small poems written with Claude, set on paintings composed just for them.
+A small museum of haiku. Every painting is composed from the poem hung inside it, and Claude writes new ones while you watch.
 Designed and built by Suhani.
+
+**→ Live at [suhxnitiwari.github.io/suhaiku](https://suhxnitiwari.github.io/suhaiku/)**
+
+## Ownership
+
+© 2026 Suhani Tiwari. **All rights reserved.** The code is public so you can see how I build, not so you can reuse it. See [LICENSE](LICENSE).
 
 ## How it's put together
 
